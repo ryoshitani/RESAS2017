@@ -11,12 +11,12 @@ for (const r of region) {
 for (let i=1; i<=5; i++) {
   $("#r1").append('<input type="radio" name="r1" '
     + 'value="' + i + '" '
-    + 'onchange="tmp(' + i + ')">'
-    + i)
+    + 'onchange="modifyStd(this)">'
+    + i + '</input>')
 }
-function tmp(i) {
-  console.log(i);
-}
+
+r1_areaFee = 100000;
+
 
 const region_color = {
   'area': "aaaaaa"
@@ -116,15 +116,31 @@ function setRegionStyle(r) {
   let area_color = {
     "default": DEF_map_style.area.default
   }
-  function defOpacity(value) {
-    if (value>50000) return 1;
-    else if (value <= 10000) return 0.2;
-    else return Math.floor(value/10000)*0.2;
+  function normAreaFee(value) {
+    if(value < r1_areaFee) return 0;
+    if(value > r1_areaFee*2) return 1;
+    else{
+      return (value - r1_areaFee)/value; // 相対誤差
+
   }
+    // if (value>50000) return 1;
+    // else if (value <= 10000) return 0.2;
+    // else return Math.floor(value/10000)*0.2;
+  }
+
+  function cov16(n){
+  sin = "0123456789ABCDEF";
+  if(n>255)return 'FF';
+  if(n<0) return '00';
+  return sin.charAt(Math.floor(n/16))+sin.charAt(n%16);//16進数2桁を返す
+  }
+
   function defColorCode(value) {
-    const opacity = defOpacity(value);
-    const gb = ('0' + (1-opacity).toString(16)).slice(-2)
-    return 'ff' + gb + gb;
+//    const opacity = normAreaFee(value);
+//    const gb = ('0' + (1-opacity).toString(16)).slice(-2)
+    let gb = cov16(Math.round(normAreaFee(value) * 0xff));
+    return ('ff'+ gb + gb);
+    console.log(r1_areaFee);
   }
   for (let d of dataset){
     area_color[d.cityCode] = defColorCode(d.areaFee);
@@ -137,14 +153,45 @@ function setRegionStyle(r) {
   return region_style;
 }
 
+function calAreaFeeMissMatch(area) {
+  let dataset = dataset_areaFee[area];
+  let areaFeeMissMatch = {
+    "default": DEF_map_style.area.default
+  }
+  for (let d of dataset){
+    areaFeeMissMatch[d.cityCode] = d.areaFee;
+  }
+  return areaFeeMissMatch;
+}
+
 // 選択地域の色変更と地域への画面遷移
 function goToRegion(button) {
   const r = button.value;
   const region_style = setRegionStyle(r);
+console.log(r1_areaFee)
+
+  var missmatch = {};
+  missmatch.areaFee = calAreaFeeMissMatch(r);// r は選択された地域
+  temp = missmatch.areaFee;
 
   blankmap.setStyle(region_style.map)
   const p = new Y.LatLng(region_style.lat, region_style.lng);
   map.setZoom(region_style.zoom_level, true, p, true);
+}
+
+// 基準選択による色変更
+function modifyStd(r1){
+
+  r1_areaFee = r1.value * 10000
+
+  switch (r1.value) {
+    case '1': r1_areaFee = 7163;
+    case 2: r1_areaFee = 13101;
+    case 3: r1_areaFee = 21212;
+    case 4: r1_areaFee = 42803;
+    case 5: r1_areaFee = 42835;
+    default: console.log(r1.value, "noob");
+  }
 }
 
 window.onload = function() {
